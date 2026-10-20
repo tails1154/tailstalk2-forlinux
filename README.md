@@ -5,9 +5,15 @@
     SPDX-License-Identifier: CC0-1.0
 -->
 
-# NeoChat
+# TailsTalk 2 for Linux
 
-A Qt/QML based Matrix client.
+A Qt/QML desktop client for TailsTalk 2, forked from KDE's NeoChat.
+
+This project keeps NeoChat's GPL-3.0 codebase and KDE/QML interface as its
+starting point, while replacing the Matrix transport with a native TailsTalk 2
+client protocol. It is intended to use TailsTalk 2 directly so rooms, channels,
+messages, users, and TailsTalk-specific features do not need to be emulated as
+Matrix rooms.
 
 <a href='https://matrix.org'><img src='https://matrix.org/docs/legacy/made-for-matrix.png' alt='Made for Matrix' height=64 target=_blank /></a>
 <a href='https://flathub.org/apps/details/org.kde.neochat'><img width='190px' alt='Download on Flathub' src='https://flathub.org/assets/badges/flathub-badge-i-en.png'/></a>
@@ -15,8 +21,7 @@ A Qt/QML based Matrix client.
 
 ## Introduction
 
-NeoChat is a client for [Matrix](https://matrix.org), the decentralized communication protocol for instant
-messaging.
+TailsTalk 2 for Linux is a native client for TailsTalk 2.
 
 NeoChat is based on KDE frameworks and as [libQuotient](https://github.com/quotient-im/libQuotient), a
 Qt-based SDK for the [Matrix Protocol](https://spec.matrix.org/).

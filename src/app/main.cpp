@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
     auto about = KAboutData::fromAppStreamForApplication();
     // Works around bug fixed with https://invent.kde.org/frameworks/kcoreaddons/-/merge_requests/582
 #if KCOREADDONS_VERSION < QT_VERSION_CHECK(6, 28, 0)
-    about.setComponentName(QStringLiteral("neochat"));
+    about.setComponentName(QStringLiteral("tailstalk2-forlinux"));
 #endif
     about.setVersion(QByteArrayLiteral(NEOCHAT_VERSION_STRING));
     about.setCopyrightStatement(i18n("© 2018-2020 Black Hat, 2020-2026 KDE Community"));

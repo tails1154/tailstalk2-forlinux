@@ -137,11 +137,13 @@ QNetworkRequest TailsTalkClient::request(const QString &path) const
     if (!basePath.endsWith(QLatin1Char('/'))) {
         basePath += QLatin1Char('/');
     }
-    auto relativePath = path;
+    const QUrl relativeUrl(path);
+    auto relativePath = relativeUrl.path();
     while (relativePath.startsWith(QLatin1Char('/'))) {
         relativePath.remove(0, 1);
     }
     url.setPath(basePath + relativePath);
+    url.setQuery(relativeUrl.query(QUrl::FullyEncoded));
     QNetworkRequest result(url);
     result.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     result.setRawHeader("accept", "application/json");

@@ -175,7 +175,7 @@ ki18n_install(po)
 
 install(FILES tailstalk2-forlinux.desktop DESTINATION ${KDE_INSTALL_APPDIR})
 install(FILES icons/tailstalk2.png DESTINATION ${KDE_INSTALL_ICONDIR}/hicolor/512x512/apps RENAME tailstalk2-forlinux.png)
-install(FILES org.kde.neochat.appdata.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
+install(FILES org.kde.neochat.appdata.xml DESTINATION ${KDE_INSTALL_METAINFODIR} RENAME tailstalk2-forlinux.metainfo.xml)
 install(FILES org.kde.neochat.svg DESTINATION ${KDE_INSTALL_FULL_ICONDIR}/hicolor/scalable/apps)
 install(FILES org.kde.neochat.tray.svg DESTINATION ${KDE_INSTALL_FULL_ICONDIR}/hicolor/scalable/apps)
 

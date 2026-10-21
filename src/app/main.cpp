@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     about.setComponentName(QStringLiteral("tailstalk2-forlinux"));
 #endif
     about.setVersion(QByteArrayLiteral(NEOCHAT_VERSION_STRING));
-    about.setCopyrightStatement(i18n("© 2018-2020 Black Hat, 2020-2026 KDE Community"));
+    about.setCopyrightStatement(i18n("© 2018-2020 Black Hat, 2020-2026 KDE Community, TailsTalk 2 for Linux contributors"));
     about.addAuthor(i18n("Carl Schwan"), i18n("Maintainer"), u"carl@carlschwan.eu"_s, u"https://carlschwan.eu"_s, QUrl(u"https://carlschwan.eu/avatar.png"_s));
     about.addAuthor(i18n("Tobias Fella"), i18n("Maintainer"), u"tobias.fella@kde.org"_s, u"https://tobiasfella.de"_s);
     about.addAuthor(i18n("James Graham"), i18n("Maintainer"), u"james.h.graham@protonmail.com"_s);
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
     about.setTranslator(i18nc("NAME OF TRANSLATORS", "Your names"), i18nc("EMAIL OF TRANSLATORS", "Your emails"));
 
     about.addComponent(u"libQuotient"_s,
-                       i18n("A Qt library to write cross-platform clients for Matrix"),
+                       i18n("KDE NeoChat compatibility library used by the legacy Matrix interface"),
                        i18nc("<version number> (built against <possibly different version number>)",
                              "%1 (built against %2)",
                              Quotient::versionString(),
@@ -179,9 +179,10 @@ int main(int argc, char *argv[])
     ColorSchemer colorScheme;
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(i18n("Client for the matrix communication protocol"));
-    parser.addPositionalArgument(u"urls"_s, i18n("Supports matrix: url scheme"));
+    parser.setApplicationDescription(i18n("TailsTalk 2 desktop client"));
+    parser.addPositionalArgument(u"urls"_s, i18n("Supports TailsTalk 2 invite URLs"));
     parser.addOption(QCommandLineOption("ignore-ssl-errors"_L1, i18n("Ignore all SSL Errors, e.g., unsigned certificates.")));
+    parser.addOption(QCommandLineOption("matrix"_L1, i18n("Use the legacy Matrix-compatible interface")));
 
     QCommandLineOption replaceOption({QStringLiteral("replace")}, i18nc("command line description", "Replace an existing instance"));
     parser.addOption(replaceOption);
@@ -196,7 +197,7 @@ int main(int argc, char *argv[])
     parser.addOption(dbusActivatedOption);
 #endif
 
-    QCommandLineOption shareOption(u"share"_s, i18n("Share a URL to Matrix"), u"text"_s);
+    QCommandLineOption shareOption(u"share"_s, i18n("Share a TailsTalk 2 URL"), u"text"_s);
     parser.addOption(shareOption);
 
     QCommandLineOption selfTestOpt(u"self-test"_s, u"internal, for automated testing"_s);
@@ -212,8 +213,8 @@ int main(int argc, char *argv[])
 #ifdef HAVE_KDBUSADDONS
         // We *don't* want to use KDBusService here. I don't know why, but it makes activation super unreliable. We don't really need it anyway.
         if (!QDBusConnection::sessionBus().registerService(QGuiApplication::desktopFileName())) {
-            // Gracefully fail if NeoChat is already running
-            qWarning() << "NeoChat already running, not sending push notifications.";
+            // Gracefully fail if TailsTalk 2 is already running
+            qWarning() << "TailsTalk 2 is already running, not sending push notifications.";
             return 0;
         }
 #endif
@@ -243,6 +244,14 @@ int main(int argc, char *argv[])
     qml_register_types_org_kde_neochat();
 
     QQmlApplicationEngine engine;
+    QObject::connect(&engine, &QQmlApplicationEngine::warnings, &app, [](const QList<QQmlError> &warnings) {
+        for (const auto &warning : warnings) {
+            qWarning().noquote() << warning.toString();
+        }
+    });
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, [](const QUrl &url) {
+        qCritical() << "TailsTalk 2 QML object creation failed:" << url;
+    });
 
 #ifdef HAVE_KDBUSADDONS
     service.connect(&service,
@@ -290,8 +299,13 @@ int main(int argc, char *argv[])
 
     engine.addImageProvider(u"blurhash"_s, new BlurHashImageProvider);
 
-    engine.loadFromModule("org.kde.neochat", "Main");
+    if (parser.isSet("matrix"_L1)) {
+        engine.loadFromModule("org.kde.neochat", "Main");
+    } else {
+        engine.load(QUrl(u"qrc:/qt/qml/org/kde/neochat/qml/TailsTalkMain.qml"_s));
+    }
     if (engine.rootObjects().isEmpty()) {
+        qCritical().noquote() << "TailsTalk 2 could not load its user interface";
         return -1;
     }
 

@@ -18,9 +18,14 @@ TailsTalkClient::TailsTalkClient(QObject *parent)
         const auto event = document.object();
         const auto type = event.value(QStringLiteral("type")).toString();
         if (type == QStringLiteral("Ready")) {
-            Q_EMIT discoverySucceeded(event.value(QStringLiteral("servers")).toArray(),
-                                      event.value(QStringLiteral("channels")).toArray(),
-                                      event.value(QStringLiteral("users")).toArray());
+            const auto servers = event.value(QStringLiteral("servers")).toArray();
+            const auto channels = event.value(QStringLiteral("channels")).toArray();
+            const auto users = event.value(QStringLiteral("users")).toArray();
+            m_servers = servers.toVariantList();
+            m_channels = channels.toVariantList();
+            m_users = users.toVariantList();
+            Q_EMIT discoverySucceeded(servers, channels, users);
+            Q_EMIT discoveryChanged();
         } else if (type == QStringLiteral("Message")) {
             Q_EMIT messageReceived(event);
         }
@@ -63,6 +68,21 @@ QString TailsTalkClient::userId() const
 QString TailsTalkClient::sessionToken() const
 {
     return m_token;
+}
+
+QVariantList TailsTalkClient::servers() const
+{
+    return m_servers;
+}
+
+QVariantList TailsTalkClient::channels() const
+{
+    return m_channels;
+}
+
+QVariantList TailsTalkClient::users() const
+{
+    return m_users;
 }
 
 QNetworkRequest TailsTalkClient::request(const QString &path) const
@@ -109,6 +129,22 @@ void TailsTalkClient::discover()
     connectEvents();
 }
 
+void TailsTalkClient::fetchMessages(const QString &channelId)
+{
+    if (!isAuthenticated()) {
+        Q_EMIT requestFailed(QStringLiteral("fetch messages"), 401, QStringLiteral("Not authenticated"));
+        return;
+    }
+    auto url = QUrl(QStringLiteral("/channels/%1/messages").arg(channelId));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("limit"), QStringLiteral("50"));
+    url.setQuery(query);
+    auto *reply = m_network.get(request(url.toString()));
+    handleReply(reply, QStringLiteral("fetch messages"), [this](const QJsonValue &value) {
+        Q_EMIT messagesFetched(value.toArray().toVariantList());
+    });
+}
+
 void TailsTalkClient::connectEvents()
 {
     if (m_events.state() == QAbstractSocket::ConnectedState || m_events.state() == QAbstractSocket::ConnectingState) {
@@ -141,7 +177,11 @@ void TailsTalkClient::clearSession()
     m_events.close();
     m_token.clear();
     m_userId.clear();
+    m_servers.clear();
+    m_channels.clear();
+    m_users.clear();
     Q_EMIT authenticatedChanged();
+    Q_EMIT discoveryChanged();
 }
 
 void TailsTalkClient::handleReply(QNetworkReply *reply, const QString &operation, std::function<void(const QJsonValue &)> success)

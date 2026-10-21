@@ -64,6 +64,7 @@ ecm_add_qml_module(neochat URI org.kde.neochat GENERATE_PLUGIN_SOURCE
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/src/org/kde/neochat
     QML_FILES
         qml/Main.qml
+        qml/TailsTalkMain.qml
         qml/AccountMenu.qml
         qml/CollapsedRoomDelegate.qml
         qml/RoomPage.qml
@@ -388,7 +389,7 @@ install(TARGETS neochat-app ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 
 if (NOT ANDROID AND NOT WIN32 AND NOT APPLE)
     # krunner plugin must be the same as the app id for flatpak to export it
-    install(FILES plasma-runner-neochat.desktop DESTINATION ${KDE_INSTALL_DATAROOTDIR}/krunner/dbusplugins RENAME org.kde.neochat.desktop)
+    install(FILES plasma-runner-neochat.desktop DESTINATION ${KDE_INSTALL_DATAROOTDIR}/krunner/dbusplugins RENAME tailstalk2-forlinux.desktop)
 endif()
 
 if (APPLE)

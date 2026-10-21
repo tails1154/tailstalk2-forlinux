@@ -7,42 +7,43 @@
 
 # TailsTalk 2 for Linux
 
-A Qt/QML desktop client for TailsTalk 2, forked from KDE's NeoChat.
+A Qt/QML desktop client for TailsTalk 2, built from KDE's NeoChat foundation.
 
-This project keeps NeoChat's GPL-3.0 codebase and KDE/QML interface as its
-starting point, while replacing the Matrix transport with a native TailsTalk 2
-client protocol. It is intended to use TailsTalk 2 directly so rooms, channels,
-messages, users, and TailsTalk-specific features do not need to be emulated as
-Matrix rooms.
+This project keeps the GPL-3.0 license and KDE/QML interface as its starting
+point, while adding a native TailsTalk 2 client protocol. TailsTalk 2 servers,
+channels, messages, users, and invites are handled as TailsTalk data instead of
+being squeezed into another protocol's model.
 
-<a href='https://matrix.org'><img src='https://matrix.org/docs/legacy/made-for-matrix.png' alt='Made for Matrix' height=64 target=_blank /></a>
-<a href='https://flathub.org/apps/details/org.kde.neochat'><img width='190px' alt='Download on Flathub' src='https://flathub.org/assets/badges/flathub-badge-i-en.png'/></a>
-<a href='https://snapcraft.io/neochat'><img width='190px' alt='Download on the Snap Store' src='https://apps.kde.org/store_badges/snapstore/en.svg'/></a>
+The native TailsTalk interface is the default. The `--matrix` option remains as
+a compatibility escape hatch for the inherited KDE interface while the native
+client grows feature-by-feature.
 
 ## Introduction
 
 TailsTalk 2 for Linux is a native client for TailsTalk 2.
 
-NeoChat is based on KDE frameworks and as [libQuotient](https://github.com/quotient-im/libQuotient), a
-Qt-based SDK for the [Matrix Protocol](https://spec.matrix.org/).
+TailsTalk 2 for Linux is based on KDE Frameworks and Qt Quick. The legacy
+compatibility interface still uses [libQuotient](https://github.com/quotient-im/libQuotient/),
+which is retained and credited as a KDE/Matrix compatibility component.
 
 ![Timeline](https://cdn.kde.org/screenshots/neochat/application.png)
 
 ## Features
 
-NeoChat aims to be a fully featured application for the Matrix specification. As such, most parts of the current specification are supported, with the notable exceptions
-of VoIP, threads, and some aspects of End-to-End Encryption. There are a few other smaller omissions due to the Matrix spec constantly
-evolving, but the aim remains to provide eventual support for the entire spec.
+- Native TailsTalk 2 sign-in and session handling
+- Server and channel discovery
+- Channel history and live message updates
+- Message sending through the TailsTalk 2 API
+- A friendly native desktop shell built with KDE Kirigami
+- Legacy Matrix-compatible interface available with `--matrix`
 
 ## Get it
 
-Details where to find stable releases for NeoChat can be found on its [homepage](https://apps.kde.org/neochat).
+Arch Linux packages can be built with the included `PKGBUILD`. The project is
+also designed to be installed from the TailsTalk 2 development workspace while
+the native client is under active development.
 
-Nightly builds for Linux and Windows can be downloaded from [cdn.kde.org](https://cdn.kde.org/ci-builds/network/neochat/).
-Nightly builds for Android are available from [KDE's nightly F-Droid repository](https://community.kde.org/Android/F-Droid).
-Nightly Flatpaks are available from [KDE's nightly Flatpak repository](https://userbase.kde.org/Tutorials/Flatpak).
-
-## Building NeoChat
+## Building TailsTalk 2 for Linux
 
 The best way to build KDE apps during development is to use `kde-builder`. The full instructions for this can be found on
 the KDE community website's get involved section under [development](https://develop.kde.org/docs/getting-started/building/). This
@@ -53,7 +54,9 @@ development environments for [Windows](https://develop.kde.org/docs/getting-star
 
 ## Running
 
-Start the executable in your preferred way – either from the build directory or from the installed location. If built using `kde-builder`, you can also run `kde-builder --run neochat`
+Start `build/bin/tailstalk2-forlinux` from the build directory, or launch
+`tailstalk2-forlinux` after installation. Pass `--matrix` only when you need the
+legacy compatibility interface.
 
 ## Tests
 
@@ -64,29 +67,32 @@ be complete.
 
 ## Current build status
 
-![coverage](https://invent.kde.org/network/neochat/badges/master/pipeline.svg)
-
-Currently, the number of tests is limited but growing. If anyone wants to help improve this, those
-contributions would be especially welcome.
+The native client is being expanded incrementally. Contributions that improve
+TailsTalk protocol coverage, accessibility, and testing are especially welcome.
 
 ## Contributing
 
 As is the case throughout the KDE ecosystem, contributions are welcome from all. The code base is managed in the
-[NeoChat repository](https://invent.kde.org/network/neochat) of the KDE Gitlab instance.
+The active project repository is [TailsTalk 2 for Linux on GitHub](https://github.com/tails1154/tailstalk2-forlinux).
+The original KDE source and history remain available in the upstream
+[NeoChat repository](https://invent.kde.org/network/neochat).
 
 - [Code of Conduct](https://kde.org/code-of-conduct)
-- [Report a Bug](https://bugs.kde.org/enter_bug.cgi?format=guided&product=neochat)
+- [Report a Bug](https://github.com/tails1154/tailstalk2-forlinux/issues)
 - [Feature Request](https://community.kde.org/Infrastructure/GitLab#Submitting_a_merge_request)
 - [Create a Merge Request](https://community.kde.org/Infrastructure/GitLab#Submitting_a_merge_request)
 - [Translation](https://community.kde.org/Get_Involved/translation)
 
 ## Contact
 
-The best place to reach the maintainers is on the KDE Matrix instance in the NeoChat channel, [#neochat:kde.org](https://go.kde.org/matrix/#/#neochat:kde.org). See [Matrix](https://community.kde.org/Matrix) for more details.
+For TailsTalk 2 bugs and ideas, use the project's GitHub issues. KDE and
+NeoChat attribution, history, and licensing information are preserved below.
 
 ## Acknowledgement
 
-NeoChat uses [libQuotient](https://github.com/quotient-im/libQuotient/) as its Matrix SDK.
+The legacy compatibility interface uses [libQuotient](https://github.com/quotient-im/libQuotient/).
+It is not required by the native TailsTalk message path, but remains linked for
+the compatibility mode and is credited under its LGPL license.
 
 NeoChat is a fork of [Spectral](https://gitlab.com/spectral-im/spectral/).
 

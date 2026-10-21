@@ -21,6 +21,8 @@ Kirigami.ApplicationWindow {
     property bool mfaPending: false
     property string mfaTicket: ""
     property bool pollBusy: false
+    property bool olderMessagesAvailable: true
+    property bool loadingOlderMessages: false
     property var visibleChannels: selectedServerId.length === 0
         ? client.channels
         : client.channels.filter(function(channel) {
@@ -92,8 +94,30 @@ Kirigami.ApplicationWindow {
 
         function onMessagesFetched(items) {
             messages.clear()
+            root.olderMessagesAvailable = items.length >= 50
+            root.loadingOlderMessages = false
             for (let index = items.length - 1; index >= 0; --index) {
                 messages.append(items[index])
+            }
+        }
+
+        function onOlderMessagesFetched(items) {
+            root.loadingOlderMessages = false
+            root.olderMessagesAvailable = items.length >= 50
+            for (let index = 0; index < items.length; ++index) {
+                if (!root.messageId(items[index])) {
+                    continue
+                }
+                var duplicate = false
+                for (let existingIndex = 0; existingIndex < messages.count; ++existingIndex) {
+                    if (root.messageId(messages.get(existingIndex)) === root.messageId(items[index])) {
+                        duplicate = true
+                        break
+                    }
+                }
+                if (!duplicate) {
+                    messages.insert(0, items[index])
+                }
             }
         }
 
@@ -123,6 +147,8 @@ Kirigami.ApplicationWindow {
         selectedChannelId = channel.id
         selectedChannelName = channel.name || channel.id
         messages.clear()
+        olderMessagesAvailable = true
+        loadingOlderMessages = false
         client.fetchMessages(selectedChannelId)
     }
 
@@ -441,6 +467,17 @@ Kirigami.ApplicationWindow {
                     Layout.margins: Kirigami.Units.largeSpacing
                     text: root.selectedChannelName || "Select a channel"
                     level: 2
+                }
+
+                QQC2.Button {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: root.olderMessagesAvailable && messages.count > 0
+                    enabled: !root.loadingOlderMessages
+                    text: root.loadingOlderMessages ? "Loading older messages…" : "Load older messages"
+                    onClicked: {
+                        root.loadingOlderMessages = true
+                        client.fetchOlderMessages(root.selectedChannelId, root.messageId(messages.get(0)))
+                    }
                 }
 
                 ListView {

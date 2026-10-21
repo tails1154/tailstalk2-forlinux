@@ -60,6 +60,7 @@ public:
     Q_INVOKABLE void logout();
     Q_INVOKABLE void discover();
     Q_INVOKABLE void fetchMessages(const QString &channelId);
+    Q_INVOKABLE void fetchOlderMessages(const QString &channelId, const QString &beforeMessageId);
     Q_INVOKABLE void sendMessage(const QString &channelId, const QString &content);
     Q_INVOKABLE void editMessage(const QString &channelId, const QString &messageId, const QString &content);
     Q_INVOKABLE void deleteMessage(const QString &channelId, const QString &messageId);
@@ -77,6 +78,7 @@ Q_SIGNALS:
     void discoveryChanged();
     void discoveryFailed(const QString &message);
     void messagesFetched(const QVariantList &messages);
+    void olderMessagesFetched(const QVariantList &messages);
     void messageReceived(const QJsonObject &message);
     void messageUpdated(const QJsonObject &message);
     void messageDeleted(const QString &channelId, const QString &messageId);

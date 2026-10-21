@@ -315,6 +315,27 @@ void TailsTalkClient::fetchMessages(const QString &channelId)
     });
 }
 
+void TailsTalkClient::fetchOlderMessages(const QString &channelId, const QString &beforeMessageId)
+{
+    if (!isAuthenticated()) {
+        Q_EMIT requestFailed(QStringLiteral("fetch older messages"), 401, QStringLiteral("Not authenticated"));
+        return;
+    }
+    if (beforeMessageId.isEmpty()) {
+        Q_EMIT requestFailed(QStringLiteral("fetch older messages"), 400, QStringLiteral("Missing message cursor"));
+        return;
+    }
+    auto url = QUrl(QStringLiteral("/channels/%1/messages").arg(channelId));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("limit"), QStringLiteral("50"));
+    query.addQueryItem(QStringLiteral("before"), beforeMessageId);
+    url.setQuery(query);
+    auto *reply = m_network.get(request(url.toString()));
+    handleReply(reply, QStringLiteral("fetch older messages"), [this](const QJsonValue &value) {
+        Q_EMIT olderMessagesFetched(value.toArray().toVariantList());
+    });
+}
+
 void TailsTalkClient::connectEvents()
 {
     if (!m_shouldReconnect || !isAuthenticated()) {

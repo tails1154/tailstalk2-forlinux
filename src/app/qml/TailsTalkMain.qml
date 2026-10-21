@@ -18,6 +18,8 @@ Kirigami.ApplicationWindow {
     property string selectedServerId: ""
     property string editingMessageId: ""
     property bool loggedIn: client.authenticated
+    property bool mfaPending: false
+    property string mfaTicket: ""
     property bool pollBusy: false
     property var visibleChannels: selectedServerId.length === 0
         ? client.channels
@@ -57,6 +59,12 @@ Kirigami.ApplicationWindow {
 
         function onLoginFailed(message) {
             root.errorMessage = message || "TailsTalk login failed"
+        }
+
+        function onMfaRequired(ticket, allowedMethods) {
+            root.errorMessage = ""
+            root.mfaTicket = ticket
+            root.mfaPending = true
         }
 
         function onRequestFailed(operation, status, message) {
@@ -160,7 +168,7 @@ Kirigami.ApplicationWindow {
 
     StackLayout {
         anchors.fill: parent
-        currentIndex: root.loggedIn ? 1 : 0
+        currentIndex: root.loggedIn ? 2 : (root.mfaPending ? 1 : 0)
 
         Item {
             ColumnLayout {
@@ -215,6 +223,65 @@ Kirigami.ApplicationWindow {
             }
         }
 
+        Item {
+            ColumnLayout {
+                anchors.centerIn: parent
+                width: Math.min(parent.width - Kirigami.Units.gridUnit * 8, Kirigami.Units.gridUnit * 30)
+                spacing: Kirigami.Units.largeSpacing
+
+                Kirigami.Heading {
+                    text: "Verify your sign-in"
+                    level: 1
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                QQC2.Label {
+                    text: "Enter the code from your authenticator app."
+                    Layout.alignment: Qt.AlignHCenter
+                    wrapMode: Text.Wrap
+                }
+
+                Kirigami.InlineMessage {
+                    Layout.fillWidth: true
+                    visible: root.errorMessage.length > 0
+                    text: root.errorMessage
+                    type: Kirigami.MessageType.Error
+                    showCloseButton: true
+                }
+
+                QQC2.TextField {
+                    id: mfaCode
+                    Layout.fillWidth: true
+                    placeholderText: "Verification code"
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    onAccepted: verifyMfa.clicked()
+                }
+
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+
+                    QQC2.Button {
+                        text: "Back"
+                        onClicked: {
+                            root.mfaPending = false
+                            root.mfaTicket = ""
+                            root.errorMessage = ""
+                        }
+                    }
+
+                    QQC2.Button {
+                        id: verifyMfa
+                        text: "Verify"
+                        enabled: mfaCode.text.length > 0
+                        onClicked: {
+                            root.errorMessage = ""
+                            client.submitMfa(root.mfaTicket, mfaCode.text)
+                        }
+                    }
+                }
+            }
+        }
+
         RowLayout {
             spacing: 0
 
@@ -225,7 +292,11 @@ Kirigami.ApplicationWindow {
 
                 QQC2.ToolButton {
                     text: "Sign out"
-                    onClicked: client.clearSession()
+                    onClicked: {
+                        root.mfaPending = false
+                        root.mfaTicket = ""
+                        client.clearSession()
+                    }
                 }
 
                 QQC2.Label {

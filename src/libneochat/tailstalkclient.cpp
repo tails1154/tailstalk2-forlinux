@@ -177,22 +177,62 @@ void TailsTalkClient::login(const QString &email, const QString &password, const
     QJsonObject payload{{QStringLiteral("email"), email}, {QStringLiteral("password"), password}, {QStringLiteral("friendly_name"), friendlyName}};
     auto *reply = m_network.post(request(QStringLiteral("/auth/session/login")), QJsonDocument(payload).toJson(QJsonDocument::Compact));
     handleReply(reply, QStringLiteral("login"), [this](const QJsonValue &value) {
-        const auto result = value.toObject();
-        const auto token = result.value(QStringLiteral("token")).toString();
-        const auto id = result.value(QStringLiteral("user_id")).toString();
-        if (token.isEmpty() || id.isEmpty()) {
-            Q_EMIT loginFailed(QStringLiteral("TailsTalk returned an invalid session"));
-            return;
+        finishLogin(value);
+    });
+}
+
+void TailsTalkClient::submitMfa(const QString &ticket, const QString &code, const QString &friendlyName)
+{
+    if (ticket.isEmpty() || code.isEmpty()) {
+        Q_EMIT loginFailed(QStringLiteral("Enter the verification code to continue"));
+        return;
+    }
+    stopReconnect();
+    m_shouldReconnect = true;
+    QJsonObject response{{QStringLiteral("totp_code"), code}};
+    QJsonObject payload{{QStringLiteral("mfa_ticket"), ticket}, {QStringLiteral("mfa_response"), response}, {QStringLiteral("friendly_name"), friendlyName}};
+    auto *reply = m_network.post(request(QStringLiteral("/auth/session/login")), QJsonDocument(payload).toJson(QJsonDocument::Compact));
+    handleReply(reply, QStringLiteral("MFA login"), [this](const QJsonValue &value) {
+        finishLogin(value);
+    });
+}
+
+void TailsTalkClient::finishLogin(const QJsonValue &value)
+{
+    auto result = value.toObject();
+    const auto resultType = result.value(QStringLiteral("result")).toString();
+    if (resultType == QStringLiteral("MFA")) {
+        QStringList methods;
+        for (const auto &method : result.value(QStringLiteral("allowed_methods")).toArray()) {
+            methods.append(method.toString());
         }
-        m_token = token;
-        m_userId = id;
-        Q_EMIT authenticatedChanged();
-        auto *userReply = m_network.get(request(QStringLiteral("/users/%1").arg(id)));
-        handleReply(userReply, QStringLiteral("user profile"), [this](const QJsonValue &userValue) {
-            Q_EMIT loginSucceeded(m_userId, userValue.toObject());
-            connectEvents();
-            discover();
-        });
+        Q_EMIT mfaRequired(result.value(QStringLiteral("ticket")).toString(), methods);
+        return;
+    }
+    if (resultType == QStringLiteral("Disabled")) {
+        Q_EMIT loginFailed(QStringLiteral("This account is disabled"));
+        return;
+    }
+
+    // ResponseLogin::Success is a tagged session object. Accept a nested
+    // session as well so older deployments remain compatible.
+    if (result.value(QStringLiteral("session")).isObject()) {
+        result = result.value(QStringLiteral("session")).toObject();
+    }
+    const auto token = result.value(QStringLiteral("token")).toString();
+    const auto id = result.value(QStringLiteral("user_id")).toString();
+    if (token.isEmpty() || id.isEmpty()) {
+        Q_EMIT loginFailed(QStringLiteral("TailsTalk returned an invalid session response"));
+        return;
+    }
+    m_token = token;
+    m_userId = id;
+    Q_EMIT authenticatedChanged();
+    auto *userReply = m_network.get(request(QStringLiteral("/users/@me")));
+    handleReply(userReply, QStringLiteral("user profile"), [this](const QJsonValue &userValue) {
+        Q_EMIT loginSucceeded(m_userId, userValue.toObject());
+        connectEvents();
+        discover();
     });
 }
 

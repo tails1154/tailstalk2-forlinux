@@ -8,6 +8,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QObject>
+#include <QStringList>
 #include <QTimer>
 #include <QUrl>
 #include <QVariantList>
@@ -55,6 +56,7 @@ public:
     QVariantList users() const;
 
     Q_INVOKABLE void login(const QString &email, const QString &password, const QString &friendlyName = QStringLiteral("TailsTalk 2 for Linux"));
+    Q_INVOKABLE void submitMfa(const QString &ticket, const QString &code, const QString &friendlyName = QStringLiteral("TailsTalk 2 for Linux"));
     Q_INVOKABLE void discover();
     Q_INVOKABLE void fetchMessages(const QString &channelId);
     Q_INVOKABLE void sendMessage(const QString &channelId, const QString &content);
@@ -67,6 +69,7 @@ public:
 Q_SIGNALS:
     void loginSucceeded(const QString &userId, const QJsonObject &user);
     void loginFailed(const QString &message);
+    void mfaRequired(const QString &ticket, const QStringList &allowedMethods);
     void discoverySucceeded(const QJsonArray &servers, const QJsonArray &channels, const QJsonArray &users);
     void discoveryChanged();
     void discoveryFailed(const QString &message);
@@ -86,6 +89,7 @@ private:
     void scheduleReconnect();
     void stopReconnect();
     void sendHeartbeat();
+    void finishLogin(const QJsonValue &value);
     void handleReply(QNetworkReply *reply, const QString &operation, std::function<void(const QJsonValue &)> success);
 
     QNetworkAccessManager m_network;

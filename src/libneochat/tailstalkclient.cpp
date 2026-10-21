@@ -406,6 +406,19 @@ void TailsTalkClient::toggleReaction(const QString &channelId, const QString &me
     });
 }
 
+void TailsTalkClient::togglePin(const QString &channelId, const QString &messageId, bool pinned)
+{
+    if (!isAuthenticated()) {
+        Q_EMIT requestFailed(QStringLiteral("pin message"), 401, QStringLiteral("Not authenticated"));
+        return;
+    }
+    const auto path = QStringLiteral("/channels/%1/messages/%2/pin").arg(channelId, messageId);
+    QNetworkReply *reply = pinned ? m_network.post(request(path), QByteArray()) : m_network.deleteResource(request(path));
+    handleReply(reply, QStringLiteral("pin message"), [this, channelId](const QJsonValue &) {
+        Q_EMIT messageUpdated(QJsonObject{{QStringLiteral("channel"), channelId}});
+    });
+}
+
 void TailsTalkClient::votePoll(const QString &channelId, const QString &messageId, const QString &optionId, bool selected)
 {
     if (!isAuthenticated()) {

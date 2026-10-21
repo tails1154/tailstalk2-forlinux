@@ -49,6 +49,11 @@ Kirigami.ApplicationWindow {
         }
 
         QQC2.MenuItem {
+            text: root.contextMessagePinned ? "Unpin message" : "Pin message"
+            onTriggered: client.togglePin(root.selectedChannelId, root.contextMessageId, !root.contextMessagePinned)
+        }
+
+        QQC2.MenuItem {
             text: "Delete message"
             onTriggered: client.deleteMessage(root.selectedChannelId, root.contextMessageId)
         }
@@ -173,6 +178,7 @@ Kirigami.ApplicationWindow {
 
     property string contextMessageId: ""
     property string contextMessageContent: ""
+    property bool contextMessagePinned: false
 
     StackLayout {
         anchors.fill: parent
@@ -454,6 +460,7 @@ Kirigami.ApplicationWindow {
                             onClicked: {
                                 root.contextMessageId = modelData._id || modelData.id || ""
                                 root.contextMessageContent = modelData.content || ""
+                                root.contextMessagePinned = modelData.pinned === true
                                 messageMenu.popup()
                             }
                         }

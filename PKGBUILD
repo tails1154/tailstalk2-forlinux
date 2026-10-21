@@ -2,7 +2,7 @@
 # TailsTalk 2 for Linux is a GPL-licensed fork of KDE NeoChat.
 pkgname=tailstalk2-forlinux
 pkgver=26.11.70
-pkgrel=6
+pkgrel=7
 pkgdesc='TailsTalk 2 for Linux desktop client, based on KDE NeoChat'
 arch=('x86_64')
 url='https://github.com/tails1154/tailstalk2-forlinux'

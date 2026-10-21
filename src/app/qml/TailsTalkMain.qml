@@ -15,7 +15,13 @@ Kirigami.ApplicationWindow {
     property string errorMessage: ""
     property string selectedChannelId: ""
     property string selectedChannelName: ""
+    property string selectedServerId: ""
     property bool loggedIn: client.authenticated
+    property var visibleChannels: selectedServerId.length === 0
+        ? client.channels
+        : client.channels.filter(function(channel) {
+            return (channel.server || channel.server_id) === selectedServerId
+        })
 
     title: loggedIn ? "TailsTalk 2" : "TailsTalk 2 — Sign in"
     minimumWidth: Kirigami.Units.gridUnit * 55
@@ -38,8 +44,13 @@ Kirigami.ApplicationWindow {
         }
 
         function onDiscoveryChanged() {
+            if (!root.selectedServerId && client.servers.length > 0) {
+                root.selectedServerId = root.objectId(client.servers[0])
+            }
             if (!root.selectedChannelId && client.channels.length > 0) {
-                root.selectChannel(client.channels[0])
+                if (root.visibleChannels.length > 0) {
+                    root.selectChannel(root.visibleChannels[0])
+                }
             }
         }
 
@@ -77,6 +88,39 @@ Kirigami.ApplicationWindow {
         selectedChannelName = channel.name || channel.id
         messages.clear()
         client.fetchMessages(selectedChannelId)
+    }
+
+    function objectId(object) {
+        return object ? (object._id || object.id || "") : ""
+    }
+
+    function objectName(object) {
+        return object ? (object.name || object.username || object.display_name || object._id || object.id || "Unnamed") : "Unnamed"
+    }
+
+    function selectServer(server) {
+        selectedServerId = objectId(server)
+        if (visibleChannels.length > 0) {
+            selectChannel(visibleChannels[0])
+        } else {
+            selectedChannelId = ""
+            selectedChannelName = ""
+            messages.clear()
+        }
+    }
+
+    function authorName(message) {
+        if (message.author && (message.author.username || message.author.display_name)) {
+            return message.author.username || message.author.display_name
+        }
+        var authorId = message.author_id || message.author
+        for (var index = 0; index < client.users.length; ++index) {
+            var user = client.users[index]
+            if (objectId(user) === authorId) {
+                return user.username || user.display_name || authorId
+            }
+        }
+        return authorId || "User"
     }
 
     StackLayout {
@@ -150,7 +194,28 @@ Kirigami.ApplicationWindow {
                 }
 
                 QQC2.Label {
-                    text: "Servers and channels · " + (client.connected ? "Connected" : "Reconnecting…")
+                    text: "Servers · " + (client.connected ? "Connected" : "Reconnecting…")
+                    padding: Kirigami.Units.largeSpacing
+                    font.bold: true
+                }
+
+                ListView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(contentHeight, Kirigami.Units.gridUnit * 8)
+                    clip: true
+                    model: client.servers
+
+                    delegate: QQC2.ItemDelegate {
+                        required property var modelData
+                        width: ListView.view.width
+                        text: root.objectName(modelData)
+                        highlighted: root.objectId(modelData) === root.selectedServerId
+                        onClicked: root.selectServer(modelData)
+                    }
+                }
+
+                QQC2.Label {
+                    text: "Channels"
                     padding: Kirigami.Units.largeSpacing
                     font.bold: true
                 }
@@ -159,7 +224,7 @@ Kirigami.ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    model: client.channels
+                    model: root.visibleChannels
 
                     delegate: QQC2.ItemDelegate {
                         required property var modelData
@@ -197,7 +262,7 @@ Kirigami.ApplicationWindow {
                     delegate: QQC2.Label {
                         required property var modelData
                         width: messageView.width
-                        text: (modelData.author && modelData.author.username ? modelData.author.username : (modelData.author_id || "User")) + ": " + (modelData.content || "")
+                        text: root.authorName(modelData) + ": " + (modelData.content || "")
                         wrapMode: Text.Wrap
                         padding: Kirigami.Units.smallSpacing
                     }

@@ -3,10 +3,14 @@
 
 #include "tailstalkclient.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QNetworkReply>
+#include <QSettings>
 #include <QUrlQuery>
+
+#include <qt6keychain/keychain.h>
 
 #include <algorithm>
 
@@ -50,6 +54,8 @@ TailsTalkClient::TailsTalkClient(QObject *parent)
     connect(&m_events, &QWebSocket::errorOccurred, this, [this](QAbstractSocket::SocketError) {
         Q_EMIT requestFailed(QStringLiteral("events"), 0, m_events.errorString());
     });
+
+    QTimer::singleShot(0, this, &TailsTalkClient::restoreSession);
 }
 
 void TailsTalkClient::handleEvent(const QJsonObject &event)
@@ -227,6 +233,48 @@ void TailsTalkClient::finishLogin(const QJsonValue &value)
     }
     m_token = token;
     m_userId = id;
+    QSettings settings;
+    settings.setValue(QStringLiteral("TailsTalk2/session_user_id"), m_userId);
+    auto *saveJob = new QKeychain::WritePasswordJob(qAppName(), this);
+    saveJob->setAutoDelete(true);
+    saveJob->setKey(QStringLiteral("tailstalk2-session:%1").arg(m_userId));
+    saveJob->setBinaryData(m_token.toUtf8());
+    connect(saveJob, &QKeychain::Job::finished, this, [saveJob] {
+        if (saveJob->error() != QKeychain::Error::NoError) {
+            qWarning() << "Could not save TailsTalk session to the keychain:" << saveJob->errorString();
+        }
+    });
+    saveJob->start();
+    startAuthenticatedSession();
+}
+
+void TailsTalkClient::restoreSession()
+{
+    QSettings settings;
+    const auto id = settings.value(QStringLiteral("TailsTalk2/session_user_id")).toString();
+    if (id.isEmpty()) {
+        return;
+    }
+
+    auto *loadJob = new QKeychain::ReadPasswordJob(qAppName(), this);
+    loadJob->setAutoDelete(true);
+    loadJob->setKey(QStringLiteral("tailstalk2-session:%1").arg(id));
+    connect(loadJob, &QKeychain::Job::finished, this, [this, loadJob, id] {
+        if (loadJob->error() != QKeychain::Error::NoError || loadJob->binaryData().isEmpty()) {
+            QSettings settings;
+            settings.remove(QStringLiteral("TailsTalk2/session_user_id"));
+            return;
+        }
+        m_userId = id;
+        m_token = QString::fromUtf8(loadJob->binaryData());
+        m_shouldReconnect = true;
+        startAuthenticatedSession();
+    });
+    loadJob->start();
+}
+
+void TailsTalkClient::startAuthenticatedSession()
+{
     Q_EMIT authenticatedChanged();
     auto *userReply = m_network.get(request(QStringLiteral("/users/@me")));
     handleReply(userReply, QStringLiteral("user profile"), [this](const QJsonValue &userValue) {
@@ -372,6 +420,7 @@ void TailsTalkClient::closePoll(const QString &channelId, const QString &message
 
 void TailsTalkClient::clearSession()
 {
+    const auto oldUserId = m_userId;
     m_shouldReconnect = false;
     stopReconnect();
     m_events.close();
@@ -380,6 +429,14 @@ void TailsTalkClient::clearSession()
     m_servers.clear();
     m_channels.clear();
     m_users.clear();
+    QSettings settings;
+    settings.remove(QStringLiteral("TailsTalk2/session_user_id"));
+    if (!oldUserId.isEmpty()) {
+        auto *deleteJob = new QKeychain::DeletePasswordJob(qAppName(), this);
+        deleteJob->setAutoDelete(true);
+        deleteJob->setKey(QStringLiteral("tailstalk2-session:%1").arg(oldUserId));
+        deleteJob->start();
+    }
     Q_EMIT authenticatedChanged();
     Q_EMIT connectionStateChanged();
     Q_EMIT discoveryChanged();

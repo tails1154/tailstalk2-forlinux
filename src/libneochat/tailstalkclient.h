@@ -90,6 +90,8 @@ private:
     void stopReconnect();
     void sendHeartbeat();
     void finishLogin(const QJsonValue &value);
+    void restoreSession();
+    void startAuthenticatedSession();
     void handleReply(QNetworkReply *reply, const QString &operation, std::function<void(const QJsonValue &)> success);
 
     QNetworkAccessManager m_network;

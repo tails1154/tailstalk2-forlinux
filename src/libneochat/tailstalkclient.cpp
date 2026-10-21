@@ -226,15 +226,17 @@ void TailsTalkClient::finishLogin(const QJsonValue &value)
         return;
     }
 
-    // ResponseLogin::Success is a tagged session object. Accept a nested
-    // session as well so older deployments remain compatible.
+    // ResponseLogin::Success is normally a flat, tagged session object:
+    // {"result":"Success","_id":"...","token":"...","user_id":"..."}.
+    // Accept the nested form too for older deployments.
+    auto session = result;
     if (result.value(QStringLiteral("session")).isObject()) {
-        result = result.value(QStringLiteral("session")).toObject();
+        session = result.value(QStringLiteral("session")).toObject();
     }
-    const auto token = result.value(QStringLiteral("token")).toString();
-    const auto id = result.value(QStringLiteral("user_id")).toString();
+    const auto token = session.value(QStringLiteral("token")).toString().trimmed();
+    const auto id = session.value(QStringLiteral("user_id")).toString().trimmed();
     if (token.isEmpty() || id.isEmpty()) {
-        Q_EMIT loginFailed(QStringLiteral("TailsTalk returned an invalid session response"));
+        Q_EMIT loginFailed(QStringLiteral("TailsTalk returned an incomplete session. Check the server response and try again."));
         return;
     }
     m_token = token;

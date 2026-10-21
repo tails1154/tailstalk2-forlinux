@@ -57,6 +57,7 @@ public:
 
     Q_INVOKABLE void login(const QString &email, const QString &password, const QString &friendlyName = QStringLiteral("TailsTalk 2 for Linux"));
     Q_INVOKABLE void submitMfa(const QString &ticket, const QString &code, const QString &friendlyName = QStringLiteral("TailsTalk 2 for Linux"));
+    Q_INVOKABLE void logout();
     Q_INVOKABLE void discover();
     Q_INVOKABLE void fetchMessages(const QString &channelId);
     Q_INVOKABLE void sendMessage(const QString &channelId, const QString &content);

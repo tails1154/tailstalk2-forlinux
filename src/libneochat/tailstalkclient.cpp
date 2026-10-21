@@ -418,6 +418,24 @@ void TailsTalkClient::closePoll(const QString &channelId, const QString &message
     });
 }
 
+void TailsTalkClient::logout()
+{
+    if (!isAuthenticated()) {
+        clearSession();
+        return;
+    }
+
+    auto *reply = m_network.post(request(QStringLiteral("/auth/session/logout")), QByteArray());
+    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+        const auto status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (reply->error() != QNetworkReply::NoError || status < 200 || status >= 300) {
+            Q_EMIT requestFailed(QStringLiteral("logout"), status, reply->errorString());
+        }
+        reply->deleteLater();
+        clearSession();
+    });
+}
+
 void TailsTalkClient::clearSession()
 {
     const auto oldUserId = m_userId;

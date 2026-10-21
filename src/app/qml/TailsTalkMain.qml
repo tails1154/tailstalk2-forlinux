@@ -295,7 +295,7 @@ Kirigami.ApplicationWindow {
                     onClicked: {
                         root.mfaPending = false
                         root.mfaTicket = ""
-                        client.clearSession()
+                        client.logout()
                     }
                 }
 

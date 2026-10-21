@@ -163,6 +163,14 @@ Kirigami.ApplicationWindow {
         return !poll || poll.closed || (poll.closes_at !== undefined && poll.closes_at <= Date.now())
     }
 
+    function messageId(message) {
+        return message ? (message._id || message.id || "") : ""
+    }
+
+    function reactionUsers(message, emoji) {
+        return message && message.reactions && message.reactions[emoji] ? message.reactions[emoji] : []
+    }
+
     property string contextMessageId: ""
     property string contextMessageContent: ""
 
@@ -375,6 +383,27 @@ Kirigami.ApplicationWindow {
                             text: root.authorName(modelData) + ": " + (modelData.content || "")
                             wrapMode: Text.Wrap
                             padding: Kirigami.Units.smallSpacing
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Kirigami.Units.smallSpacing
+                            spacing: Kirigami.Units.smallSpacing
+
+                            Repeater {
+                                model: ["👍", "❤️", "😂", "🎉"]
+
+                                delegate: QQC2.Button {
+                                    required property string modelData
+                                    property var voters: root.reactionUsers(messageData, modelData)
+                                    text: modelData + (voters.length ? " " + voters.length : "")
+                                    flat: true
+                                    onClicked: client.toggleReaction(root.selectedChannelId,
+                                                                      root.messageId(messageData),
+                                                                      modelData,
+                                                                      voters.indexOf(client.userId) < 0)
+                                }
+                            }
                         }
 
                         ColumnLayout {

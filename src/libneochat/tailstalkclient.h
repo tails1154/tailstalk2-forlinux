@@ -63,6 +63,7 @@ public:
     Q_INVOKABLE void sendMessage(const QString &channelId, const QString &content);
     Q_INVOKABLE void editMessage(const QString &channelId, const QString &messageId, const QString &content);
     Q_INVOKABLE void deleteMessage(const QString &channelId, const QString &messageId);
+    Q_INVOKABLE void toggleReaction(const QString &channelId, const QString &messageId, const QString &emoji, bool selected);
     Q_INVOKABLE void votePoll(const QString &channelId, const QString &messageId, const QString &optionId, bool selected);
     Q_INVOKABLE void closePoll(const QString &channelId, const QString &messageId);
     Q_INVOKABLE void clearSession();

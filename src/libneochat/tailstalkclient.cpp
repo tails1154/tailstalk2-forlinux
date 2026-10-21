@@ -392,6 +392,20 @@ void TailsTalkClient::deleteMessage(const QString &channelId, const QString &mes
     });
 }
 
+void TailsTalkClient::toggleReaction(const QString &channelId, const QString &messageId, const QString &emoji, bool selected)
+{
+    if (!isAuthenticated()) {
+        Q_EMIT requestFailed(QStringLiteral("reaction"), 401, QStringLiteral("Not authenticated"));
+        return;
+    }
+    const auto encodedEmoji = QString::fromUtf8(QUrl::toPercentEncoding(emoji));
+    const auto path = QStringLiteral("/channels/%1/messages/%2/reactions/%3").arg(channelId, messageId, encodedEmoji);
+    QNetworkReply *reply = selected ? m_network.put(request(path), QByteArray()) : m_network.deleteResource(request(path));
+    handleReply(reply, QStringLiteral("reaction"), [this, channelId](const QJsonValue &) {
+        Q_EMIT messageUpdated(QJsonObject{{QStringLiteral("channel"), channelId}});
+    });
+}
+
 void TailsTalkClient::votePoll(const QString &channelId, const QString &messageId, const QString &optionId, bool selected)
 {
     if (!isAuthenticated()) {

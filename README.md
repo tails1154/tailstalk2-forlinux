@@ -31,9 +31,11 @@ which is retained and credited as a KDE/Matrix compatibility component.
 ## Features
 
 - Native TailsTalk 2 sign-in and session handling
+- MFA sign-in, keychain-backed session persistence, and server-side logout
 - Server and channel discovery
-- Channel history and live message updates
+- Direct messages, channel history pagination, and live message updates
 - Message sending through the TailsTalk 2 API
+- Message editing, deletion, reactions, pins, polls, and creator-only poll closing
 - A friendly native desktop shell built with KDE Kirigami
 - Legacy Matrix-compatible interface available with `--matrix`
 

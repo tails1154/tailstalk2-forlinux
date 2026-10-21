@@ -99,7 +99,7 @@ Kirigami.ApplicationWindow {
 
         function onMessageReceived(message) {
             if (message.channel === root.selectedChannelId || message.channel_id === root.selectedChannelId) {
-                messages.append(message)
+                root.upsertMessage(message)
             }
         }
 
@@ -162,6 +162,20 @@ Kirigami.ApplicationWindow {
     function selectDirectChannel(channel) {
         selectedServerId = ""
         selectChannel(channel)
+    }
+
+    function upsertMessage(message) {
+        var id = root.messageId(message)
+        if (!id) {
+            return
+        }
+        for (var index = 0; index < messages.count; ++index) {
+            if (root.messageId(messages.get(index)) === id) {
+                messages.set(index, message)
+                return
+            }
+        }
+        messages.append(message)
     }
 
     function selectServer(server) {

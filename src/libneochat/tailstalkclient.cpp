@@ -91,6 +91,12 @@ void TailsTalkClient::handleEvent(const QJsonObject &event)
         message.insert(QStringLiteral("_id"), event.value(QStringLiteral("id")));
         message.insert(QStringLiteral("channel"), event.value(QStringLiteral("channel")));
         Q_EMIT messageUpdated(message);
+    } else if (type == QStringLiteral("MessageAppend")) {
+        Q_EMIT messageUpdated(
+            QJsonObject{{QStringLiteral("_id"), event.value(QStringLiteral("id"))}, {QStringLiteral("channel"), event.value(QStringLiteral("channel"))}});
+    } else if (type == QStringLiteral("MessageReact") || type == QStringLiteral("MessageUnreact") || type == QStringLiteral("MessageRemoveReaction")) {
+        Q_EMIT messageUpdated(
+            QJsonObject{{QStringLiteral("_id"), event.value(QStringLiteral("id"))}, {QStringLiteral("channel"), event.value(QStringLiteral("channel_id"))}});
     } else if (type == QStringLiteral("MessageDelete")) {
         Q_EMIT messageDeleted(event.value(QStringLiteral("channel")).toString(), event.value(QStringLiteral("id")).toString());
     }

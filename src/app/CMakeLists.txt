@@ -369,7 +369,7 @@ else()
 endif()
 
 if(NOT ANDROID)
-    set_target_properties(neochat-app PROPERTIES OUTPUT_NAME "neochat")
+    set_target_properties(neochat-app PROPERTIES OUTPUT_NAME "tailstalk2-forlinux")
 endif()
 
 if(TARGET KF6::DBusAddons AND NOT WIN32)

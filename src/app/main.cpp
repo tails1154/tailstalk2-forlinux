@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
     // KAboutData doesn't set organizationName yet
     QGuiApplication::setOrganizationName("KDE"_L1);
     // This needs to be set before fromAppStreamForApplication can be used, so don't remove this!
-    QGuiApplication::setDesktopFileName(u"org.kde.neochat"_s);
+    QGuiApplication::setDesktopFileName(u"tailstalk2-forlinux"_s);
 
     auto about = KAboutData::fromAppStreamForApplication();
     // Works around bug fixed with https://invent.kde.org/frameworks/kcoreaddons/-/merge_requests/582
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
                        KAboutLicense::LGPL_V2_1);
 
     KAboutData::setApplicationData(about);
-    QGuiApplication::setWindowIcon(QIcon::fromTheme(u"org.kde.neochat"_s));
+    QGuiApplication::setWindowIcon(QIcon::fromTheme(u"tailstalk2-forlinux"_s));
 
     KCrash::initialize();
     KCrash::setErrorTags({

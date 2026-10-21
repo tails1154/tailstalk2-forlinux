@@ -26,6 +26,9 @@ Kirigami.ApplicationWindow {
         : client.channels.filter(function(channel) {
             return (channel.server || channel.server_id) === selectedServerId
         })
+    property var directChannels: client.channels.filter(function(channel) {
+        return !channel.server && !channel.server_id && (channel.channel_type === "DirectMessage" || channel.channel_type === "Group" || channel.channel_type === "SavedMessages")
+    })
 
     title: loggedIn ? "TailsTalk 2" : "TailsTalk 2 — Sign in"
     minimumWidth: Kirigami.Units.gridUnit * 55
@@ -129,6 +132,36 @@ Kirigami.ApplicationWindow {
 
     function objectName(object) {
         return object ? (object.name || object.username || object.display_name || object._id || object.id || "Unnamed") : "Unnamed"
+    }
+
+    function channelName(channel) {
+        if (!channel) {
+            return "Unnamed conversation"
+        }
+        if (channel.name) {
+            return channel.name
+        }
+        if (channel.channel_type === "SavedMessages") {
+            return "Saved messages"
+        }
+        var names = []
+        var recipients = channel.recipients || []
+        for (var recipientIndex = 0; recipientIndex < recipients.length; ++recipientIndex) {
+            var recipientId = objectId(recipients[recipientIndex]) || recipients[recipientIndex]
+            for (var userIndex = 0; userIndex < client.users.length; ++userIndex) {
+                var user = client.users[userIndex]
+                if (objectId(user) === recipientId && recipientId !== client.userId) {
+                    names.push(user.username || user.display_name || recipientId)
+                    break
+                }
+            }
+        }
+        return names.length ? names.join(", ") : "Direct message"
+    }
+
+    function selectDirectChannel(channel) {
+        selectedServerId = ""
+        selectChannel(channel)
     }
 
     function selectServer(server) {
@@ -342,16 +375,40 @@ Kirigami.ApplicationWindow {
 
                 ListView {
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
+                    Layout.fillHeight: root.directChannels.length === 0
+                    Layout.preferredHeight: Math.min(contentHeight, Kirigami.Units.gridUnit * 12)
                     clip: true
                     model: root.visibleChannels
 
                     delegate: QQC2.ItemDelegate {
                         required property var modelData
                         width: ListView.view.width
-                        text: modelData.name || modelData.id
+                        text: root.channelName(modelData)
                         highlighted: modelData.id === root.selectedChannelId
                         onClicked: root.selectChannel(modelData)
+                    }
+                }
+
+                QQC2.Label {
+                    text: "Direct messages"
+                    padding: Kirigami.Units.largeSpacing
+                    font.bold: true
+                    visible: root.directChannels.length > 0
+                }
+
+                ListView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(contentHeight, Kirigami.Units.gridUnit * 10)
+                    clip: true
+                    model: root.directChannels
+                    visible: count > 0
+
+                    delegate: QQC2.ItemDelegate {
+                        required property var modelData
+                        width: ListView.view.width
+                        text: root.channelName(modelData)
+                        highlighted: modelData.id === root.selectedChannelId
+                        onClicked: root.selectDirectChannel(modelData)
                     }
                 }
             }

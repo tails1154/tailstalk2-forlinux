@@ -18,6 +18,7 @@ Kirigami.ApplicationWindow {
     property string selectedServerId: ""
     property string editingMessageId: ""
     property bool loggedIn: client.authenticated
+    property bool pollBusy: false
     property var visibleChannels: selectedServerId.length === 0
         ? client.channels
         : client.channels.filter(function(channel) {
@@ -132,7 +133,7 @@ Kirigami.ApplicationWindow {
         if (message.author && (message.author.username || message.author.display_name)) {
             return message.author.username || message.author.display_name
         }
-        var authorId = message.author_id || message.author
+        var authorId = messageAuthorId(message)
         for (var index = 0; index < client.users.length; ++index) {
             var user = client.users[index]
             if (objectId(user) === authorId) {
@@ -140,6 +141,18 @@ Kirigami.ApplicationWindow {
             }
         }
         return authorId || "User"
+    }
+
+    function messageAuthorId(message) {
+        return message ? (message.author_id || (message.author && (message.author._id || message.author.id)) || message.author || "") : ""
+    }
+
+    function pollVotes(poll, optionId) {
+        return poll && poll.votes && poll.votes[optionId] ? poll.votes[optionId] : []
+    }
+
+    function pollClosed(poll) {
+        return !poll || poll.closed || (poll.closes_at !== undefined && poll.closes_at <= Date.now())
     }
 
     property string contextMessageId: ""
@@ -281,12 +294,59 @@ Kirigami.ApplicationWindow {
                     Layout.margins: Kirigami.Units.largeSpacing
                     clip: true
                     model: messages
-                    delegate: QQC2.Label {
+                    delegate: ColumnLayout {
                         required property var modelData
+                        property var messageData: modelData
                         width: messageView.width
-                        text: root.authorName(modelData) + ": " + (modelData.content || "")
-                        wrapMode: Text.Wrap
-                        padding: Kirigami.Units.smallSpacing
+
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            text: root.authorName(modelData) + ": " + (modelData.content || "")
+                            wrapMode: Text.Wrap
+                            padding: Kirigami.Units.smallSpacing
+                        }
+
+                        ColumnLayout {
+                            visible: modelData.poll !== undefined
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Kirigami.Units.largeSpacing
+                            Layout.rightMargin: Kirigami.Units.largeSpacing
+
+                            QQC2.Label {
+                                Layout.fillWidth: true
+                                text: modelData.poll ? modelData.poll.question : ""
+                                font.bold: true
+                                wrapMode: Text.Wrap
+                            }
+
+                            Repeater {
+                                model: modelData.poll ? modelData.poll.options : []
+
+                                delegate: QQC2.Button {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    enabled: !root.pollClosed(messageData.poll) && !root.pollBusy
+                                    text: modelData.text + " · " + root.pollVotes(messageData.poll, modelData.id).length
+                                    onClicked: client.votePoll(root.selectedChannelId,
+                                                               messageData._id || messageData.id,
+                                                               modelData.id,
+                                                               root.pollVotes(messageData.poll, modelData.id).indexOf(client.userId) < 0)
+                                }
+                            }
+
+                            QQC2.Label {
+                                Layout.fillWidth: true
+                                visible: root.pollClosed(modelData.poll)
+                                text: "Poll closed"
+                                opacity: 0.7
+                            }
+
+                            QQC2.Button {
+                                visible: !root.pollClosed(messageData.poll) && root.messageAuthorId(messageData) === client.userId
+                                text: "Close poll"
+                                onClicked: client.closePoll(root.selectedChannelId, modelData._id || modelData.id)
+                            }
+                        }
 
                         MouseArea {
                             anchors.fill: parent

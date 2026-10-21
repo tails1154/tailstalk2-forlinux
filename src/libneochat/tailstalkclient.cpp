@@ -304,6 +304,32 @@ void TailsTalkClient::deleteMessage(const QString &channelId, const QString &mes
     });
 }
 
+void TailsTalkClient::votePoll(const QString &channelId, const QString &messageId, const QString &optionId, bool selected)
+{
+    if (!isAuthenticated()) {
+        Q_EMIT requestFailed(QStringLiteral("vote poll"), 401, QStringLiteral("Not authenticated"));
+        return;
+    }
+    QJsonObject payload{{QStringLiteral("option_id"), optionId}, {QStringLiteral("selected"), selected}};
+    auto *reply = m_network.post(request(QStringLiteral("/channels/%1/messages/%2/poll/vote").arg(channelId, messageId)),
+                                 QJsonDocument(payload).toJson(QJsonDocument::Compact));
+    handleReply(reply, QStringLiteral("vote poll"), [this, channelId](const QJsonValue &) {
+        Q_EMIT messageUpdated(QJsonObject{{QStringLiteral("channel"), channelId}});
+    });
+}
+
+void TailsTalkClient::closePoll(const QString &channelId, const QString &messageId)
+{
+    if (!isAuthenticated()) {
+        Q_EMIT requestFailed(QStringLiteral("close poll"), 401, QStringLiteral("Not authenticated"));
+        return;
+    }
+    auto *reply = m_network.post(request(QStringLiteral("/channels/%1/messages/%2/poll/close").arg(channelId, messageId)), QByteArray());
+    handleReply(reply, QStringLiteral("close poll"), [this, channelId](const QJsonValue &) {
+        Q_EMIT messageUpdated(QJsonObject{{QStringLiteral("channel"), channelId}});
+    });
+}
+
 void TailsTalkClient::clearSession()
 {
     m_shouldReconnect = false;

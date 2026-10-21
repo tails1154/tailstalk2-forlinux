@@ -16,6 +16,7 @@ Kirigami.ApplicationWindow {
     property string selectedChannelId: ""
     property string selectedChannelName: ""
     property string selectedServerId: ""
+    property string editingMessageId: ""
     property bool loggedIn: client.authenticated
     property var visibleChannels: selectedServerId.length === 0
         ? client.channels
@@ -30,6 +31,24 @@ Kirigami.ApplicationWindow {
 
     ListModel {
         id: messages
+    }
+
+    QQC2.Menu {
+        id: messageMenu
+
+        QQC2.MenuItem {
+            text: "Edit message"
+            onTriggered: {
+                root.editingMessageId = root.contextMessageId
+                composer.text = root.contextMessageContent
+                composer.forceActiveFocus()
+            }
+        }
+
+        QQC2.MenuItem {
+            text: "Delete message"
+            onTriggered: client.deleteMessage(root.selectedChannelId, root.contextMessageId)
+        }
     }
 
     Connections {
@@ -68,7 +87,7 @@ Kirigami.ApplicationWindow {
         }
 
         function onMessageUpdated(message) {
-            if (message.channel === root.selectedChannelId) {
+            if (!message.channel || message.channel === root.selectedChannelId) {
                 client.fetchMessages(root.selectedChannelId)
             }
         }
@@ -122,6 +141,9 @@ Kirigami.ApplicationWindow {
         }
         return authorId || "User"
     }
+
+    property string contextMessageId: ""
+    property string contextMessageContent: ""
 
     StackLayout {
         anchors.fill: parent
@@ -265,6 +287,16 @@ Kirigami.ApplicationWindow {
                         text: root.authorName(modelData) + ": " + (modelData.content || "")
                         wrapMode: Text.Wrap
                         padding: Kirigami.Units.smallSpacing
+
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.RightButton
+                            onClicked: {
+                                root.contextMessageId = modelData._id || modelData.id || ""
+                                root.contextMessageContent = modelData.content || ""
+                                messageMenu.popup()
+                            }
+                        }
                     }
                 }
 
@@ -281,11 +313,25 @@ Kirigami.ApplicationWindow {
                     }
 
                     QQC2.Button {
+                        visible: root.editingMessageId.length > 0
+                        text: "Cancel"
+                        onClicked: {
+                            root.editingMessageId = ""
+                            composer.clear()
+                        }
+                    }
+
+                    QQC2.Button {
                         id: sendMessageButton
                         text: "Send"
                         enabled: composer.enabled && composer.text.trim().length > 0
                         onClicked: {
-                            client.sendMessage(root.selectedChannelId, composer.text)
+                            if (root.editingMessageId.length > 0) {
+                                client.editMessage(root.selectedChannelId, root.editingMessageId, composer.text)
+                                root.editingMessageId = ""
+                            } else {
+                                client.sendMessage(root.selectedChannelId, composer.text)
+                            }
                             composer.clear()
                         }
                     }

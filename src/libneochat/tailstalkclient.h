@@ -58,6 +58,8 @@ public:
     Q_INVOKABLE void discover();
     Q_INVOKABLE void fetchMessages(const QString &channelId);
     Q_INVOKABLE void sendMessage(const QString &channelId, const QString &content);
+    Q_INVOKABLE void editMessage(const QString &channelId, const QString &messageId, const QString &content);
+    Q_INVOKABLE void deleteMessage(const QString &channelId, const QString &messageId);
     Q_INVOKABLE void clearSession();
 
 Q_SIGNALS:

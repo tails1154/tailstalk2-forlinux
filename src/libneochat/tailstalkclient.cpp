@@ -277,6 +277,33 @@ void TailsTalkClient::sendMessage(const QString &channelId, const QString &conte
     });
 }
 
+void TailsTalkClient::editMessage(const QString &channelId, const QString &messageId, const QString &content)
+{
+    if (!isAuthenticated()) {
+        Q_EMIT requestFailed(QStringLiteral("edit message"), 401, QStringLiteral("Not authenticated"));
+        return;
+    }
+    QJsonObject payload{{QStringLiteral("content"), content}};
+    auto *reply = m_network.sendCustomRequest(request(QStringLiteral("/channels/%1/messages/%2").arg(channelId, messageId)),
+                                              QByteArrayLiteral("PATCH"),
+                                              QJsonDocument(payload).toJson(QJsonDocument::Compact));
+    handleReply(reply, QStringLiteral("edit message"), [this](const QJsonValue &value) {
+        Q_EMIT messageUpdated(value.toObject());
+    });
+}
+
+void TailsTalkClient::deleteMessage(const QString &channelId, const QString &messageId)
+{
+    if (!isAuthenticated()) {
+        Q_EMIT requestFailed(QStringLiteral("delete message"), 401, QStringLiteral("Not authenticated"));
+        return;
+    }
+    auto *reply = m_network.deleteResource(request(QStringLiteral("/channels/%1/messages/%2").arg(channelId, messageId)));
+    handleReply(reply, QStringLiteral("delete message"), [this, channelId, messageId](const QJsonValue &) {
+        Q_EMIT messageDeleted(channelId, messageId);
+    });
+}
+
 void TailsTalkClient::clearSession()
 {
     m_shouldReconnect = false;

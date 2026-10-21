@@ -55,6 +55,18 @@ Kirigami.ApplicationWindow {
                 messages.append(message)
             }
         }
+
+        function onMessageUpdated(message) {
+            if (message.channel === root.selectedChannelId) {
+                client.fetchMessages(root.selectedChannelId)
+            }
+        }
+
+        function onMessageDeleted(channelId) {
+            if (channelId === root.selectedChannelId) {
+                client.fetchMessages(root.selectedChannelId)
+            }
+        }
     }
 
     function selectChannel(channel) {

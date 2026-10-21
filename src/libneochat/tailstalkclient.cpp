@@ -45,32 +45,49 @@ TailsTalkClient::TailsTalkClient(QObject *parent)
         if (!document.isObject()) {
             return;
         }
-        const auto event = document.object();
-        const auto type = event.value(QStringLiteral("type")).toString();
-        if (type == QStringLiteral("Ping")) {
-            QJsonObject pong{{QStringLiteral("type"), QStringLiteral("Pong")}, {QStringLiteral("data"), event.value(QStringLiteral("data"))}};
-            m_events.sendTextMessage(QString::fromUtf8(QJsonDocument(pong).toJson(QJsonDocument::Compact)));
-        } else if (type == QStringLiteral("Pong")) {
-            m_pongTimer.stop();
-        } else if (type == QStringLiteral("Error")) {
-            Q_EMIT requestFailed(QStringLiteral("events"), 0, event.value(QStringLiteral("error")).toString(event.value(QStringLiteral("data")).toString()));
-            m_events.close();
-        } else if (type == QStringLiteral("Ready")) {
-            const auto servers = event.value(QStringLiteral("servers")).toArray();
-            const auto channels = event.value(QStringLiteral("channels")).toArray();
-            const auto users = event.value(QStringLiteral("users")).toArray();
-            m_servers = servers.toVariantList();
-            m_channels = channels.toVariantList();
-            m_users = users.toVariantList();
-            Q_EMIT discoverySucceeded(servers, channels, users);
-            Q_EMIT discoveryChanged();
-        } else if (type == QStringLiteral("Message")) {
-            Q_EMIT messageReceived(event);
-        }
+        handleEvent(document.object());
     });
     connect(&m_events, &QWebSocket::errorOccurred, this, [this](QAbstractSocket::SocketError) {
         Q_EMIT requestFailed(QStringLiteral("events"), 0, m_events.errorString());
     });
+}
+
+void TailsTalkClient::handleEvent(const QJsonObject &event)
+{
+    const auto type = event.value(QStringLiteral("type")).toString();
+    if (type == QStringLiteral("Bulk")) {
+        for (const auto &item : event.value(QStringLiteral("v")).toArray()) {
+            if (item.isObject()) {
+                handleEvent(item.toObject());
+            }
+        }
+    } else if (type == QStringLiteral("Ping")) {
+        QJsonObject pong{{QStringLiteral("type"), QStringLiteral("Pong")}, {QStringLiteral("data"), event.value(QStringLiteral("data"))}};
+        m_events.sendTextMessage(QString::fromUtf8(QJsonDocument(pong).toJson(QJsonDocument::Compact)));
+    } else if (type == QStringLiteral("Pong")) {
+        m_pongTimer.stop();
+    } else if (type == QStringLiteral("Error")) {
+        Q_EMIT requestFailed(QStringLiteral("events"), 0, event.value(QStringLiteral("error")).toString(event.value(QStringLiteral("data")).toString()));
+        m_events.close();
+    } else if (type == QStringLiteral("Ready")) {
+        const auto servers = event.value(QStringLiteral("servers")).toArray();
+        const auto channels = event.value(QStringLiteral("channels")).toArray();
+        const auto users = event.value(QStringLiteral("users")).toArray();
+        m_servers = servers.toVariantList();
+        m_channels = channels.toVariantList();
+        m_users = users.toVariantList();
+        Q_EMIT discoverySucceeded(servers, channels, users);
+        Q_EMIT discoveryChanged();
+    } else if (type == QStringLiteral("Message")) {
+        Q_EMIT messageReceived(event);
+    } else if (type == QStringLiteral("MessageUpdate")) {
+        QJsonObject message = event.value(QStringLiteral("data")).toObject();
+        message.insert(QStringLiteral("_id"), event.value(QStringLiteral("id")));
+        message.insert(QStringLiteral("channel"), event.value(QStringLiteral("channel")));
+        Q_EMIT messageUpdated(message);
+    } else if (type == QStringLiteral("MessageDelete")) {
+        Q_EMIT messageDeleted(event.value(QStringLiteral("channel")).toString(), event.value(QStringLiteral("id")).toString());
+    }
 }
 
 QUrl TailsTalkClient::apiUrl() const
@@ -283,6 +300,9 @@ void TailsTalkClient::handleReply(QNetworkReply *reply, const QString &operation
         const auto value = document.isObject() ? QJsonValue(document.object()) : QJsonValue(document.array());
         if (reply->error() != QNetworkReply::NoError || status < 200 || status >= 300) {
             const auto message = value.toObject().value(QStringLiteral("error")).toString(reply->errorString());
+            if (status == 401 && operation != QStringLiteral("login")) {
+                clearSession();
+            }
             Q_EMIT requestFailed(operation, status, message);
             if (operation == QStringLiteral("login")) {
                 Q_EMIT loginFailed(message);

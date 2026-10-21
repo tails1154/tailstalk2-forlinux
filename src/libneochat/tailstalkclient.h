@@ -68,6 +68,8 @@ Q_SIGNALS:
     void discoveryFailed(const QString &message);
     void messagesFetched(const QVariantList &messages);
     void messageReceived(const QJsonObject &message);
+    void messageUpdated(const QJsonObject &message);
+    void messageDeleted(const QString &channelId, const QString &messageId);
     void messageSent(const QJsonObject &message);
     void requestFailed(const QString &operation, int status, const QString &message);
     void authenticatedChanged();
@@ -76,6 +78,7 @@ Q_SIGNALS:
 private:
     QNetworkRequest request(const QString &path) const;
     void connectEvents();
+    void handleEvent(const QJsonObject &event);
     void scheduleReconnect();
     void stopReconnect();
     void sendHeartbeat();

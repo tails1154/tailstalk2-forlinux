@@ -39,7 +39,10 @@ which is retained and credited as a KDE/Matrix compatibility component.
 
 ## Get it
 
-Arch Linux packages can be built with the included `PKGBUILD`. The project is
+Arch Linux packages can be built with the included `PKGBUILD` from this
+development checkout with `makepkg --noextract --nodeps`. The `src/` directory
+is the checked-out source tree, so do not run `makepkg` without `--noextract`:
+makepkg normally clears its source directory before building. The project is
 also designed to be installed from the TailsTalk 2 development workspace while
 the native client is under active development.
 

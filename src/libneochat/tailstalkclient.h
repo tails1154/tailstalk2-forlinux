@@ -8,6 +8,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QObject>
+#include <QTimer>
 #include <QUrl>
 #include <QVariantList>
 #include <QWebSocket>
@@ -30,6 +31,7 @@ class TailsTalkClient : public QObject
     QML_ELEMENT
 
     Q_PROPERTY(bool authenticated READ isAuthenticated NOTIFY authenticatedChanged)
+    Q_PROPERTY(bool connected READ isConnected NOTIFY connectionStateChanged)
     Q_PROPERTY(QString userId READ userId NOTIFY authenticatedChanged)
     Q_PROPERTY(QVariantList servers READ servers NOTIFY discoveryChanged)
     Q_PROPERTY(QVariantList channels READ channels NOTIFY discoveryChanged)
@@ -45,6 +47,7 @@ public:
     void setEventsUrl(const QUrl &url);
 
     bool isAuthenticated() const;
+    bool isConnected() const;
     QString userId() const;
     QString sessionToken() const;
     QVariantList servers() const;
@@ -68,18 +71,27 @@ Q_SIGNALS:
     void messageSent(const QJsonObject &message);
     void requestFailed(const QString &operation, int status, const QString &message);
     void authenticatedChanged();
+    void connectionStateChanged();
 
 private:
     QNetworkRequest request(const QString &path) const;
     void connectEvents();
+    void scheduleReconnect();
+    void stopReconnect();
+    void sendHeartbeat();
     void handleReply(QNetworkReply *reply, const QString &operation, std::function<void(const QJsonValue &)> success);
 
     QNetworkAccessManager m_network;
     QWebSocket m_events;
+    QTimer m_heartbeatTimer;
+    QTimer m_pongTimer;
+    QTimer m_reconnectTimer;
     QUrl m_apiUrl = QUrl(QStringLiteral("https://tails1154.com:9961/api"));
     QUrl m_eventsUrl = QUrl(QStringLiteral("wss://tails1154.com:9961/events"));
     QString m_userId;
     QString m_token;
+    bool m_shouldReconnect = false;
+    int m_reconnectDelayMs = 1000;
     QVariantList m_servers;
     QVariantList m_channels;
     QVariantList m_users;

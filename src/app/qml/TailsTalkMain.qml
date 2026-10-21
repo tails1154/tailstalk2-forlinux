@@ -138,7 +138,7 @@ Kirigami.ApplicationWindow {
                 }
 
                 QQC2.Label {
-                    text: "Servers and channels"
+                    text: "Servers and channels · " + (client.connected ? "Connected" : "Reconnecting…")
                     padding: Kirigami.Units.largeSpacing
                     font.bold: true
                 }

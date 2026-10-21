@@ -3,13 +3,43 @@
 
 #include "tailstalkclient.h"
 
+#include <QDateTime>
 #include <QJsonDocument>
 #include <QNetworkReply>
 #include <QUrlQuery>
 
+#include <algorithm>
+
 TailsTalkClient::TailsTalkClient(QObject *parent)
     : QObject(parent)
 {
+    m_heartbeatTimer.setInterval(std::chrono::seconds(30));
+    m_pongTimer.setSingleShot(true);
+    m_pongTimer.setInterval(std::chrono::seconds(10));
+    m_reconnectTimer.setSingleShot(true);
+
+    connect(&m_heartbeatTimer, &QTimer::timeout, this, &TailsTalkClient::sendHeartbeat);
+    connect(&m_pongTimer, &QTimer::timeout, this, [this] {
+        if (m_events.state() == QAbstractSocket::ConnectedState) {
+            m_events.close();
+        }
+    });
+    connect(&m_reconnectTimer, &QTimer::timeout, this, &TailsTalkClient::connectEvents);
+
+    connect(&m_events, &QWebSocket::connected, this, [this] {
+        m_reconnectDelayMs = 1000;
+        m_heartbeatTimer.start();
+        m_pongTimer.stop();
+        Q_EMIT connectionStateChanged();
+    });
+    connect(&m_events, &QWebSocket::disconnected, this, [this] {
+        m_heartbeatTimer.stop();
+        m_pongTimer.stop();
+        Q_EMIT connectionStateChanged();
+        if (m_shouldReconnect && isAuthenticated()) {
+            scheduleReconnect();
+        }
+    });
     connect(&m_events, &QWebSocket::textMessageReceived, this, [this](const QString &text) {
         const auto document = QJsonDocument::fromJson(text.toUtf8());
         if (!document.isObject()) {
@@ -17,7 +47,15 @@ TailsTalkClient::TailsTalkClient(QObject *parent)
         }
         const auto event = document.object();
         const auto type = event.value(QStringLiteral("type")).toString();
-        if (type == QStringLiteral("Ready")) {
+        if (type == QStringLiteral("Ping")) {
+            QJsonObject pong{{QStringLiteral("type"), QStringLiteral("Pong")}, {QStringLiteral("data"), event.value(QStringLiteral("data"))}};
+            m_events.sendTextMessage(QString::fromUtf8(QJsonDocument(pong).toJson(QJsonDocument::Compact)));
+        } else if (type == QStringLiteral("Pong")) {
+            m_pongTimer.stop();
+        } else if (type == QStringLiteral("Error")) {
+            Q_EMIT requestFailed(QStringLiteral("events"), 0, event.value(QStringLiteral("error")).toString(event.value(QStringLiteral("data")).toString()));
+            m_events.close();
+        } else if (type == QStringLiteral("Ready")) {
             const auto servers = event.value(QStringLiteral("servers")).toArray();
             const auto channels = event.value(QStringLiteral("channels")).toArray();
             const auto users = event.value(QStringLiteral("users")).toArray();
@@ -60,6 +98,11 @@ bool TailsTalkClient::isAuthenticated() const
     return !m_token.isEmpty() && !m_userId.isEmpty();
 }
 
+bool TailsTalkClient::isConnected() const
+{
+    return m_events.state() == QAbstractSocket::ConnectedState;
+}
+
 QString TailsTalkClient::userId() const
 {
     return m_userId;
@@ -87,7 +130,19 @@ QVariantList TailsTalkClient::users() const
 
 QNetworkRequest TailsTalkClient::request(const QString &path) const
 {
-    QNetworkRequest result(m_apiUrl.resolved(QUrl(path)));
+    // QUrl::resolved() treats a leading slash as an absolute path and would
+    // silently drop the configured /api prefix.
+    auto url = m_apiUrl;
+    auto basePath = url.path();
+    if (!basePath.endsWith(QLatin1Char('/'))) {
+        basePath += QLatin1Char('/');
+    }
+    auto relativePath = path;
+    while (relativePath.startsWith(QLatin1Char('/'))) {
+        relativePath.remove(0, 1);
+    }
+    url.setPath(basePath + relativePath);
+    QNetworkRequest result(url);
     result.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     result.setRawHeader("accept", "application/json");
     if (!m_token.isEmpty()) {
@@ -98,6 +153,8 @@ QNetworkRequest TailsTalkClient::request(const QString &path) const
 
 void TailsTalkClient::login(const QString &email, const QString &password, const QString &friendlyName)
 {
+    stopReconnect();
+    m_shouldReconnect = true;
     QJsonObject payload{{QStringLiteral("email"), email}, {QStringLiteral("password"), password}, {QStringLiteral("friendly_name"), friendlyName}};
     auto *reply = m_network.post(request(QStringLiteral("/auth/session/login")), QJsonDocument(payload).toJson(QJsonDocument::Compact));
     handleReply(reply, QStringLiteral("login"), [this](const QJsonValue &value) {
@@ -147,6 +204,9 @@ void TailsTalkClient::fetchMessages(const QString &channelId)
 
 void TailsTalkClient::connectEvents()
 {
+    if (!m_shouldReconnect || !isAuthenticated()) {
+        return;
+    }
     if (m_events.state() == QAbstractSocket::ConnectedState || m_events.state() == QAbstractSocket::ConnectingState) {
         return;
     }
@@ -157,6 +217,32 @@ void TailsTalkClient::connectEvents()
     query.addQueryItem(QStringLiteral("token"), m_token);
     url.setQuery(query);
     m_events.open(url);
+}
+
+void TailsTalkClient::scheduleReconnect()
+{
+    if (!m_shouldReconnect || !isAuthenticated() || m_reconnectTimer.isActive()) {
+        return;
+    }
+    m_reconnectTimer.start(m_reconnectDelayMs);
+    m_reconnectDelayMs = std::min(m_reconnectDelayMs * 2, 30000);
+}
+
+void TailsTalkClient::stopReconnect()
+{
+    m_reconnectTimer.stop();
+    m_reconnectDelayMs = 1000;
+}
+
+void TailsTalkClient::sendHeartbeat()
+{
+    if (!isConnected()) {
+        return;
+    }
+    const auto timestamp = QDateTime::currentMSecsSinceEpoch();
+    QJsonObject ping{{QStringLiteral("type"), QStringLiteral("Ping")}, {QStringLiteral("data"), timestamp}};
+    m_events.sendTextMessage(QString::fromUtf8(QJsonDocument(ping).toJson(QJsonDocument::Compact)));
+    m_pongTimer.start();
 }
 
 void TailsTalkClient::sendMessage(const QString &channelId, const QString &content)
@@ -174,6 +260,8 @@ void TailsTalkClient::sendMessage(const QString &channelId, const QString &conte
 
 void TailsTalkClient::clearSession()
 {
+    m_shouldReconnect = false;
+    stopReconnect();
     m_events.close();
     m_token.clear();
     m_userId.clear();
@@ -181,6 +269,7 @@ void TailsTalkClient::clearSession()
     m_channels.clear();
     m_users.clear();
     Q_EMIT authenticatedChanged();
+    Q_EMIT connectionStateChanged();
     Q_EMIT discoveryChanged();
 }
 

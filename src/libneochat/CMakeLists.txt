@@ -5,6 +5,8 @@ add_library(LibNeoChat STATIC)
 
 target_sources(LibNeoChat PRIVATE
     neochatconnection.cpp
+    tailstalkclient.cpp
+    tailstalkclient.h
     neochatroom.cpp
     neochatroommember.cpp
     accountmanager.cpp
@@ -138,6 +140,7 @@ target_link_libraries(LibNeoChat PUBLIC
     Qt::Multimedia
     Qt::Quick
     Qt::QuickControls2
+    Qt::WebSockets
     KF6::ColorScheme
     KF6::ConfigCore
     KF6::CoreAddons
